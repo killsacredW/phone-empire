@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phone Empire</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f4f7ff;font:16px Arial,sans-serif}.wrap{max-width:900px;margin:auto;padding:18px}header{text-align:center;padding:18px}h1{margin:0;color:#fff}.stats,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.card,.panel{background:#17233b;border:1px solid #304363;border-radius:14px;padding:14px;margin:10px 0}.stats b{display:block;font-size:22px;margin-top:6px}.muted{color:#aab8d0;font-size:13px}button{border:0;border-radius:9px;padding:11px 14px;background:#62a5ff;color:#071326;font-weight:bold;cursor:pointer;margin:4px 3px 4px 0}.green{background:#39d99a}.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}.tabs button{background:#263957;color:white}.tabs button.active{background:#62a5ff;color:#071326}.phone{background:#22314e;border-radius:12px;padding:12px}.device{height:72px;width:43px;border:3px solid #9bb5dd;border-radius:10px;margin-bottom:10px;background:linear-gradient(140deg,#405b84,#090f1c)}.price{color:#ffd166;font-weight:bold;margin:9px 0}.row{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #304363;padding:10px 0}input{padding:10px;border-radius:8px;border:1px solid #456;background:#0d1629;color:white;width:100%}
+</style>
+</head>
+<body>
+<header><h1>📱 PHONE EMPIRE</h1><p class="muted">Покупай смартфоны, ремонтируй и продавай дороже!</p></header>
+<div class="wrap">
+<div class="stats">
+ <div class="card">💵 Деньги<b id="money">$2 500</b></div>
+ <div class="card">⭐ Уровень<b id="level">1</b></div>
+ <div class="card">📦 Телефоны<b id="count">0</b></div>
+</div>
+<div class="tabs">
+ <button class="active" onclick="tab('market',this)">🛒 Магазин</button>
+ <button onclick="tab('inventory',this)">📦 Мои телефоны</button>
+ <button onclick="tab('parts',this)">🧰 Запчасти</button>
+ <button onclick="tab('profile',this)">🏆 Профиль</button>
+</div>
+<section id="market" class="panel"><h2>🛒 Магазин телефонов</h2><p class="muted">Покупай смартфоны и продавай их с прибылью. Некоторые могут оказаться неисправными.</p><div id="marketList" class="grid"></div></section>
+<section id="inventory" class="panel" hidden><h2>📦 Мои телефоны</h2><div id="inventoryList"></div></section>
+<section id="parts" class="panel" hidden><h2>🧰 Запчасти</h2><div id="partsList" class="grid"></div></section>
+<section id="profile" class="panel" hidden><h2>🏆 Профиль бизнеса</h2><div id="profileInfo"></div><button onclick="resetGame()">Начать заново</button></section>
+<p class="muted">Прогресс сохраняется в браузере на этом устройстве.</p>
+</div>
+<script>
+const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();}
+const phones=[["iPhone 11","Apple",420,590],["iPhone 12","Apple",590,790],["iPhone 13","Apple",760,990],["iPhone 14","Apple",930,1190],["Galaxy S21","Samsung",500,690],["Galaxy S22","Samsung",680,890],["Galaxy S23","Samsung",880,1140],["Xiaomi 12","Xiaomi",390,540],["Xiaomi 13","Xiaomi",570,760],["Google Pixel 7","Google",510,700],["OnePlus 10","OnePlus",470,650],["Huawei P50","Huawei",440,610]];
+const parts=[["screen","Экран",120],["battery","Аккумулятор",65],["camera","Камера",90]];
+const fresh=()=>({money:2500,level:1,xp:0,bought:0,sold:0,repaired:0,items:[],stock:{screen:0,battery:0,camera:0},id:1});
+let s;try{s=JSON.parse(localStorage.getItem("phoneEmpireSimple"))||fresh()}catch(e){s=fresh()}
+function save(){localStorage.setItem("phoneEmpireSimple",JSON.stringify(s))}
+function cash(n){return "$"+Math.round(n).toLocaleString("en-US")}
+function xp(n){s.xp+=n;while(s.xp>=s.level*100){s.xp-=s.level*100;s.level++;s.money+=500;alert("Новый уровень! Бонус $500");}}
+function render(){
+ document.getElementById("money").textContent=cash(s.money);document.getElementById("level").textContent=s.level;document.getElementById("count").textContent=s.items.length;
+ document.getElementById("marketList").innerHTML=phones.map((p,i)=>`<div class="phone"><div class="device"></div><b>${p[0]}</b><div class="muted">${p[1]}</div><div class="price">Цена ${cash(p[2])}</div><div class="muted">Продажа: ${cash(p[3])}</div><button class="green" onclick="buy(${i})" ${s.money<p[2]?"disabled":""}>Купить</button></div>`).join("");
+ document.getElementById("inventoryList").innerHTML=s.items.length?s.items.map(p=>`<div class="row"><div><b>${p.name}</b><div class="muted">${p.bad?"⚠️ Сломан":"✅ Исправен"} · куплен за ${cash(p.cost)}</div></div><div><button class="green" onclick="sell(${p.id})">Продать ${cash(p.value)}</button>${p.bad?`<button onclick="repair(${p.id})">Починить</button>`:""}</div></div>`).join(""):"<p class='muted'>Пока пусто. Купи телефон в магазине!</p>";
+ document.getElementById("partsList").innerHTML=parts.map(p=>`<div class="phone"><h3>${p[1]}</h3><p class="muted">В наличии: ${s.stock[p[0]]}</p><div class="price">${cash(p[2])}</div><button onclick="part('${p[0]}')" ${s.money<p[2]?"disabled":""}>Купить</button></div>`).join("");
+ document.getElementById("profileInfo").innerHTML=`<p>Уровень: <b>${s.level}</b> · Опыт: ${s.xp}/${s.level*100}</p><p>Куплено: ${s.bought} · Продано: ${s.sold} · Отремонтировано: ${s.repaired}</p>`;
+ save();
+}
+function buy(i){let p=phones[i];if(s.money<p[2])return;s.money-=p[2];s.items.push({id:s.id++,name:p[0],cost:p[2],value:p[3],bad:Math.random()<.25});s.bought++;xp(20);render();alert("Телефон куплен! Проверь его в разделе «Мои телефоны».");}
+function sell(id){let i=s.items.findIndex(x=>x.id===id);if(i<0)return;let p=s.items[i];if(p.bad){alert("Сначала почини телефон!");return;}s.money+=p.value;s.items.splice(i,1);s.sold++;xp(25);render();alert("Продано за "+cash(p.value));}
+function part(id){let p=parts.find(x=>x[0]===id);if(s.money<p[2])return;s.money-=p[2];s.stock[id]++;xp(5);render();}
+function repair(id){let p=s.items.find(x=>x.id===id);if(!p)return;let idPart=["screen","battery","camera"].find(x=>s.stock[x]>0);if(!idPart){alert("Сначала купи запчасть в разделе «Запчасти».");return;}s.stock[idPart]--;p.bad=false;p.value=Math.round(p.value*1.08);s.repaired++;xp(15);render();alert("Телефон отремонтирован!");}
+function tab(id,b){document.querySelectorAll("section.panel").forEach(x=>x.hidden=x.id!==id);document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");}
+function resetGame(){if(confirm("Удалить прогресс и начать заново?")){s=fresh();render();}}
+render();
+</script>
+</body></html>
